@@ -1,0 +1,4 @@
+<resources>
+    <string name="dialog_call">Call</string>
+    <string name="dialog_cancel">Cancel</string>
+</resources>
