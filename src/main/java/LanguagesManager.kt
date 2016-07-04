@@ -10,12 +10,16 @@ class LanguagesManager(excelFile: File) {
     private val basePath: String
     private var languages: MutableMap<String, String> = mutableMapOf()
 
-    private companion object {
-        private val configSheet = 0
-        private val configBasePathRow = 0
-        private val configBasePathCell = 1
-        private val languageId = "LanguageID"
-    }
+    private val configSheet = 0
+    private val configBasePathRow = 0
+    private val configBasePathCell = 1
+    private val languageId = "LanguageID"
+
+    private val translationSheet = 1
+    private val translationFirstCellLanguagePos = 3 // TODO: Make it dynamic
+    private val translationRelativePathPos = 0
+    private val translationFileNamePos = 1
+    private val translationTagNamePos = 2
 
     constructor(excelPath: String) : this(File(excelPath))
 
@@ -23,6 +27,7 @@ class LanguagesManager(excelFile: File) {
         excelManager = ExcelManager(excelFile)
         basePath = excelManager.getStringValue(configSheet, configBasePathRow, configBasePathCell)
         initLanguages()
+        // TODO: Check excel has correct format
     }
 
     private fun initLanguages() {
@@ -46,6 +51,23 @@ class LanguagesManager(excelFile: File) {
 
         if (languages.size == 0) {
             throw InvalidArgumentException(arrayOf("You need to define at least one language to translate."))
+        }
+    }
+
+    fun translate() {
+        val itemIndex = 0
+        val rowIndex = 1
+        val languageType = excelManager.getStringValue(translationSheet, 0, translationFirstCellLanguagePos)
+        val languageFolderName = languages[languageType]
+
+        val itemRelativePath = excelManager.getStringValue(translationSheet, rowIndex, translationRelativePathPos)
+        val itemFileName = excelManager.getStringValue(translationSheet, rowIndex, translationFileNamePos)
+        val itemTagName = excelManager.getStringValue(translationSheet, rowIndex, translationTagNamePos)
+
+        val englishFile = File(basePath + itemRelativePath + "\\values\\" + itemFileName)
+        val otherLanguageFile = File(basePath + itemRelativePath + "\\values-$languageType\\" + itemFileName)
+        if (otherLanguageFile == null) {
+            // TODO: create file from english
         }
     }
 }

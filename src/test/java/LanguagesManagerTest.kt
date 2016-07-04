@@ -9,5 +9,6 @@ class LanguagesManagerTest() {
     @Test fun testA() {
         val excelFile = File(javaClass.classLoader.getResource("android_translations_sample.xlsx").file)
         val lm = LanguagesManager(excelFile)
+        lm.translate()
     }
 }
