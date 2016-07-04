@@ -1,5 +1,6 @@
 import org.apache.poi.ss.usermodel.DataFormatter
 import org.apache.poi.xssf.usermodel.XSSFRow
+import org.apache.poi.xssf.usermodel.XSSFSheet
 import org.apache.poi.xssf.usermodel.XSSFWorkbook
 import java.io.File
 import java.io.FileInputStream
@@ -10,7 +11,7 @@ import java.util.*
 /**
  * Created by juan.saravia on 04/07/2016.
  */
-class LoadExcel : AutoCloseable {
+class ExcelManager : AutoCloseable {
     private lateinit var fis: FileInputStream
     private lateinit var wb: XSSFWorkbook
     private lateinit var formatter: DataFormatter
@@ -66,5 +67,24 @@ class LoadExcel : AutoCloseable {
     override fun close() {
         wb.close()
         fis.close()
+    }
+
+    fun getStringValue(sheet: Int, row: Int, cell: Int): String {
+        val cellValue = getSheet(sheet).getRow(row)?.getCell(cell, XSSFRow.RETURN_BLANK_AS_NULL) ?: return ""
+        return formatter.formatCellValue(cellValue)
+    }
+
+    fun getSheet(position: Int): XSSFSheet {
+        return wb.getSheetAt(position)
+    }
+
+    fun getRowPosition(sheet: Int, valueFirstCell: String): Int {
+        wb.getSheetAt(sheet).rowIterator().withIndex().forEach { row ->
+            if (valueFirstCell == formatter.formatCellValue(row.value.getCell(0, XSSFRow.RETURN_BLANK_AS_NULL))) {
+                return row.index
+            }
+        }
+
+        return 0
     }
 }
