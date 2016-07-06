@@ -1,8 +1,8 @@
-import com.sun.javaws.exceptions.InvalidArgumentException
 import java.io.Closeable
 import java.io.File
 import java.nio.file.Files
 import java.rmi.UnexpectedException
+import java.util.*
 
 /**
  * Created by juan.saravia on 04/07/2016.
@@ -11,18 +11,18 @@ class LanguagesManager(excelFile: File) : Closeable {
 
     private val excelManager: ExcelManager
     private val basePath: String
-    private var languages: MutableMap<String, String> = mutableMapOf()
+    private var symbols: MutableMap<String, String> = HashMap()
 
     private val configSheet = 0
     private val configBasePathRow = 0
     private val configBasePathCell = 1
-    private val languageId = "LanguageID"
 
     private val translationSheet = 1
-    private val translationRelativePathPos = 0
-    private val translationFileNamePos = 1
-    private val translationTagNamePos = 2
-    private val translationFirstLanguage = 3
+    private val translationIsEnableCol = 0
+    private val translationRelativePathCol = 1
+    private val translationFileNameCol = 2
+    private val translationTagNameCol = 3
+    private val translationFirstLanguageCol = 4
 
     private val resourceFolderName = "values"
     private val allowNewFileFromScratch = true
@@ -33,38 +33,20 @@ class LanguagesManager(excelFile: File) : Closeable {
         excelManager = ExcelManager(excelFile)
         basePath = excelManager.getStringValue(configSheet, configBasePathRow, configBasePathCell)
         // TODO: Check excel has correct format
-    }
 
-    private fun initLanguages() {
-        val languageRowPos = excelManager.getRowPosition(configSheet, languageId)
-        if (languageRowPos == 0) {
-            throw InvalidArgumentException(arrayOf("$languageId was not found in the Excel at first sheet."))
-        }
-
-        var endReached = false
-        var index = languageRowPos
-        do {
-            index++
-            val language = excelManager.getStringValue(configSheet, index, 0)
-            val folderName = excelManager.getStringValue(configSheet, index, 1)
-            if (!language.isEmpty() && !folderName.isEmpty()) {
-                languages.put(language, folderName)
-            } else {
-                endReached = true
-            }
-        } while (!endReached)
-
-        if (languages.size == 0) {
-            throw InvalidArgumentException(arrayOf("You need to define at least one language to translate."))
-        }
+        symbols = HashMap<String, String>()
+        symbols.put("®", "\\u00AE")
+        symbols.put("&\\s", "&amp;")
+        symbols.put("©", "\\u00A9")
+        symbols.put("'", "\\'")
     }
 
     fun translate() {
 
         val langCount = getLanguageCounts() - 1
-        val itemsCount = getItemsToTranslateCount() - 1
+        val itemsCount = getItemsToTranslateCount()
 
-        for (lngCol in translationFirstLanguage..(translationFirstLanguage + langCount)) {
+        for (lngCol in translationFirstLanguageCol..(translationFirstLanguageCol + langCount)) {
 
             val languageId = excelManager.getStringValue(translationSheet, 0, lngCol)
 
@@ -74,21 +56,22 @@ class LanguagesManager(excelFile: File) : Closeable {
 
             for (itemRow in 1..itemsCount) {
 
-                val itemRelativePath = excelManager.getStringValue(translationSheet, itemRow, translationRelativePathPos)
-                val itemFileName = excelManager.getStringValue(translationSheet, itemRow, translationFileNamePos)
-                val itemTagName = excelManager.getStringValue(translationSheet, itemRow, translationTagNamePos)
+                val itemIsEnable = excelManager.getStringValue(translationSheet, itemRow, translationIsEnableCol)
+
+                if (itemIsEnable.toLowerCase() != "true") {
+                    // ignore any other state and process just items with "TRUE" value
+                    logln("Row ${itemRow + 1} disable")
+                    continue
+                }
+                log("Row ${itemRow + 1} ENABLE -> ")
+
+                val itemRelativePath = excelManager.getStringValue(translationSheet, itemRow, translationRelativePathCol)
+                val itemFileName = excelManager.getStringValue(translationSheet, itemRow, translationFileNameCol)
+                val itemTagName = excelManager.getStringValue(translationSheet, itemRow, translationTagNameCol)
                 val itemTagValue = excelManager.getStringValue(translationSheet, itemRow, lngCol)
 
                 val baseDirectory = File(basePath)
                 val subDirectory = File(baseDirectory, itemRelativePath)
-
-                if (!subDirectory.exists()) {
-                    /**
-                     * Ignore rows without path.
-                     * This will allow us to put empty rows or comments
-                     */
-                    continue
-                }
 
                 val enResDirectory = File(subDirectory, resourceFolderName)
                 val englishFile = File(enResDirectory, itemFileName)
@@ -106,9 +89,11 @@ class LanguagesManager(excelFile: File) : Closeable {
                         throw UnexpectedException("There was an error trying to create the folder for language: ${otherLanguageFile.absolutePath}")
                     }
 
+                    log("file didn't exists -> ")
                     if (englishFile.exists()) {
                         // copy eng file
                         Files.copy(englishFile.toPath(), otherLanguageFile.toPath())
+                        log("copied from english -> ")
                     } else {
                         isNewEmptyFile = true
                     }
@@ -117,23 +102,42 @@ class LanguagesManager(excelFile: File) : Closeable {
                 val otherXml = XmlParser(otherLanguageFile, isNewEmptyFile)
                 if (isNewEmptyFile) {
                     otherXml.appendElement("resources")
+                    log("file didn't exists -> created from scratch -> ")
                 }
-                otherXml.setOrCreateValueTag(itemTagName, itemTagValue)
+
+                otherXml.setOrCreateValueTag(itemTagName, replaceSymbols(itemTagValue))
                 otherXml.close()
+                logln("value replaced successfully")
             }
 
         }
     }
 
     private fun getItemsToTranslateCount(): Int {
-        return excelManager.getRowCountBySheet(translationSheet)
+        return excelManager.getRowCountBySheet(translationSheet, 1)
     }
 
     private fun getLanguageCounts(): Int {
-        return excelManager.getColCountBySheet(translationSheet) - translationFirstLanguage
+        return excelManager.getColCountBySheet(translationSheet) - translationFirstLanguageCol
     }
 
     override fun close() {
         excelManager.close()
+    }
+
+    private fun replaceSymbols(value: String): String {
+        var result = value
+        for (symbol in symbols.entries) {
+            result = result.replace(symbol.key, symbol.value)
+        }
+        return result
+    }
+
+    private fun log(msg: String) {
+        System.out.print(msg)
+    }
+
+    private fun logln(msg: String) {
+        System.out.println(msg)
     }
 }

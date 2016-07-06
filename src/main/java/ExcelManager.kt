@@ -15,7 +15,6 @@ class ExcelManager : AutoCloseable {
     private lateinit var fis: FileInputStream
     private lateinit var wb: XSSFWorkbook
     private lateinit var formatter: DataFormatter
-    private var symbols: MutableMap<String, String> = HashMap()
 
     private fun init() {
         try {
@@ -26,10 +25,6 @@ class ExcelManager : AutoCloseable {
         } catch (e: IOException) {
             e.printStackTrace()
         }
-
-        symbols = HashMap<String, String>(1)
-        symbols.put("®", "\\u00AE")
-        symbols.put("&", "&amp;")
     }
 
     constructor(file: File) {
@@ -50,18 +45,6 @@ class ExcelManager : AutoCloseable {
         }
 
     }
-
-    val titleName: String
-        get() {
-            val sheet = wb.getSheetAt(0)
-            val row = sheet.getRow(1)
-            val cell = row.getCell(1, XSSFRow.RETURN_BLANK_AS_NULL)
-            var value = formatter.formatCellValue(cell)
-            for (symbol in symbols.entries) {
-                value = value.replace(symbol.key, symbol.value)
-            }
-            return value
-        }
 
     @Throws(IOException::class)
     override fun close() {
@@ -88,14 +71,16 @@ class ExcelManager : AutoCloseable {
         return 0
     }
 
-    fun getRowCountBySheet(sheet: Int): Int {
+    fun getRowCountBySheet(sheet: Int, col: Int): Int {
         // TODO: move this to constructor as it's always the same value
-        wb.getSheetAt(sheet).rowIterator().withIndex().forEach { row ->
-            if (formatter.formatCellValue(row.value.getCell(0, XSSFRow.RETURN_BLANK_AS_NULL)).isEmpty()) {
+        /*wb.getSheetAt(sheet).rowIterator().withIndex().forEach { row ->
+            if (formatter.formatCellValue(row.value.getCell(col, XSSFRow.RETURN_BLANK_AS_NULL)).isEmpty()) {
                 return row.index
             }
         }
         return 0
+        */
+        return wb.getSheetAt(sheet).physicalNumberOfRows
     }
 
     fun getColCountBySheet(sheet: Int): Int {

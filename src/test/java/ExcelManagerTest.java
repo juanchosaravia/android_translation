@@ -13,7 +13,7 @@ public class ExcelManagerTest {
         ClassLoader classLoader = getClass().getClassLoader();
         File file = new File(classLoader.getResource("android_translations_sample_v1.xlsx").getFile());
         try(ExcelManager excel = new ExcelManager(file)) {
-            String value = excel.getTitleName();
+            //String value = excel.getTitleName();
         } catch (IOException e) {
             e.printStackTrace();
         }
