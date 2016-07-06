@@ -7,7 +7,7 @@ import java.util.*
 /**
  * Created by juan.saravia on 04/07/2016.
  */
-class LanguagesManager(excelFile: File) : Closeable {
+class LanguageTranslator(excelFile: File) : Closeable {
 
     private val excelManager: ExcelManager
     private val basePath: String
