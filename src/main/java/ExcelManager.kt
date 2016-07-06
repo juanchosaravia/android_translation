@@ -87,4 +87,23 @@ class ExcelManager : AutoCloseable {
 
         return 0
     }
+
+    fun getRowCountBySheet(sheet: Int): Int {
+        // TODO: move this to constructor as it's always the same value
+        wb.getSheetAt(sheet).rowIterator().withIndex().forEach { row ->
+            if (formatter.formatCellValue(row.value.getCell(0, XSSFRow.RETURN_BLANK_AS_NULL)).isEmpty()) {
+                return row.index
+            }
+        }
+        return 0
+    }
+
+    fun getColCountBySheet(sheet: Int): Int {
+        // TODO: move this to constructor as it's always the same value
+        var count = 0
+        while (!wb.getSheetAt(sheet).getRow(0).getCell(count).stringCellValue.isEmpty()) {
+            count++
+        }
+        return count
+    }
 }

@@ -7,7 +7,13 @@ import java.io.File
 class LanguagesManagerTest() {
 
     @Test fun testA() {
-        val excelFile = File(javaClass.classLoader.getResource("android_translations_sample.xlsx").file)
+        val excelFile = File(javaClass.classLoader.getResource("android_translations_sample_v1.xlsx").file)
+        val lm = LanguagesManager(excelFile)
+        lm.translate()
+    }
+
+    @Test fun testTranslateAll() {
+        val excelFile = File(javaClass.classLoader.getResource("android_translations_sample_v2.xlsx").file)
         val lm = LanguagesManager(excelFile)
         lm.translate()
     }

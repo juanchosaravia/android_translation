@@ -1,10 +1,13 @@
 import com.sun.javaws.exceptions.InvalidArgumentException
+import java.io.Closeable
 import java.io.File
+import java.nio.file.Files
+import java.rmi.UnexpectedException
 
 /**
  * Created by juan.saravia on 04/07/2016.
  */
-class LanguagesManager(excelFile: File) {
+class LanguagesManager(excelFile: File) : Closeable {
 
     private val excelManager: ExcelManager
     private val basePath: String
@@ -16,17 +19,19 @@ class LanguagesManager(excelFile: File) {
     private val languageId = "LanguageID"
 
     private val translationSheet = 1
-    private val translationFirstCellLanguagePos = 3 // TODO: Make it dynamic
     private val translationRelativePathPos = 0
     private val translationFileNamePos = 1
     private val translationTagNamePos = 2
+    private val translationFirstLanguage = 3
+
+    private val resourceFolderName = "values"
+    private val allowNewFileFromScratch = true
 
     constructor(excelPath: String) : this(File(excelPath))
 
     init {
         excelManager = ExcelManager(excelFile)
         basePath = excelManager.getStringValue(configSheet, configBasePathRow, configBasePathCell)
-        initLanguages()
         // TODO: Check excel has correct format
     }
 
@@ -55,19 +60,80 @@ class LanguagesManager(excelFile: File) {
     }
 
     fun translate() {
-        val itemIndex = 0
-        val rowIndex = 1
-        val languageType = excelManager.getStringValue(translationSheet, 0, translationFirstCellLanguagePos)
-        val languageFolderName = languages[languageType]
 
-        val itemRelativePath = excelManager.getStringValue(translationSheet, rowIndex, translationRelativePathPos)
-        val itemFileName = excelManager.getStringValue(translationSheet, rowIndex, translationFileNamePos)
-        val itemTagName = excelManager.getStringValue(translationSheet, rowIndex, translationTagNamePos)
+        val langCount = getLanguageCounts() - 1
+        val itemsCount = getItemsToTranslateCount() - 1
 
-        val englishFile = File(basePath + itemRelativePath + "\\values\\" + itemFileName)
-        val otherLanguageFile = File(basePath + itemRelativePath + "\\values-$languageType\\" + itemFileName)
-        if (otherLanguageFile == null) {
-            // TODO: create file from english
+        for (lngCol in translationFirstLanguage..(translationFirstLanguage + langCount)) {
+
+            val languageId = excelManager.getStringValue(translationSheet, 0, lngCol)
+
+            if (languageId.isEmpty() || languageId.startsWith("ignore-")) {
+                continue
+            }
+
+            for (itemRow in 1..itemsCount) {
+
+                val itemRelativePath = excelManager.getStringValue(translationSheet, itemRow, translationRelativePathPos)
+                val itemFileName = excelManager.getStringValue(translationSheet, itemRow, translationFileNamePos)
+                val itemTagName = excelManager.getStringValue(translationSheet, itemRow, translationTagNamePos)
+                val itemTagValue = excelManager.getStringValue(translationSheet, itemRow, lngCol)
+
+                val baseDirectory = File(basePath)
+                val subDirectory = File(baseDirectory, itemRelativePath)
+
+                if (!subDirectory.exists()) {
+                    /**
+                     * Ignore rows without path.
+                     * This will allow us to put empty rows or comments
+                     */
+                    continue
+                }
+
+                val enResDirectory = File(subDirectory, resourceFolderName)
+                val englishFile = File(enResDirectory, itemFileName)
+
+                val otherLngDirectory = File(subDirectory, "$resourceFolderName-$languageId")
+                val otherLanguageFile = File(otherLngDirectory, itemFileName)
+                var isNewEmptyFile = false
+
+                if (!otherLanguageFile.exists()) {
+                    if (!englishFile.exists() && !allowNewFileFromScratch) {
+                        throw UnexpectedException("English file doesn't exists, I'm unable to create a copy.")
+                    }
+                    // check folder for language exists or create it
+                    if (!otherLanguageFile.parentFile.exists() && !otherLanguageFile.parentFile.mkdirs()) {
+                        throw UnexpectedException("There was an error trying to create the folder for language: ${otherLanguageFile.absolutePath}")
+                    }
+
+                    if (englishFile.exists()) {
+                        // copy eng file
+                        Files.copy(englishFile.toPath(), otherLanguageFile.toPath())
+                    } else {
+                        isNewEmptyFile = true
+                    }
+                }
+
+                val otherXml = XmlParser(otherLanguageFile, isNewEmptyFile)
+                if (isNewEmptyFile) {
+                    otherXml.appendElement("resources")
+                }
+                otherXml.setOrCreateValueTag(itemTagName, itemTagValue)
+                otherXml.close()
+            }
+
         }
+    }
+
+    private fun getItemsToTranslateCount(): Int {
+        return excelManager.getRowCountBySheet(translationSheet)
+    }
+
+    private fun getLanguageCounts(): Int {
+        return excelManager.getColCountBySheet(translationSheet) - translationFirstLanguage
+    }
+
+    override fun close() {
+        excelManager.close()
     }
 }

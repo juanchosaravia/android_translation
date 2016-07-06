@@ -11,7 +11,7 @@ public class ExcelManagerTest {
     @Test
     public void testOpenFile() {
         ClassLoader classLoader = getClass().getClassLoader();
-        File file = new File(classLoader.getResource("android_translations_sample.xlsx").getFile());
+        File file = new File(classLoader.getResource("android_translations_sample_v1.xlsx").getFile());
         try(ExcelManager excel = new ExcelManager(file)) {
             String value = excel.getTitleName();
         } catch (IOException e) {
