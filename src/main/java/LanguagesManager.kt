@@ -26,6 +26,7 @@ class LanguagesManager(excelFile: File) : Closeable {
 
     private val resourceFolderName = "values"
     private val allowNewFileFromScratch = true
+    private val IGNORE = "IGNORE"
 
     constructor(excelPath: String) : this(File(excelPath))
 
@@ -60,15 +61,22 @@ class LanguagesManager(excelFile: File) : Closeable {
 
                 if (itemIsEnable.toLowerCase() != "true") {
                     // ignore any other state and process just items with "TRUE" value
-                    logln("Row ${itemRow + 1} disable")
+                    logln("Row ${itemRow + 1} Disable")
                     continue
                 }
-                log("Row ${itemRow + 1} ENABLE -> ")
 
                 val itemRelativePath = excelManager.getStringValue(translationSheet, itemRow, translationRelativePathCol)
                 val itemFileName = excelManager.getStringValue(translationSheet, itemRow, translationFileNameCol)
                 val itemTagName = excelManager.getStringValue(translationSheet, itemRow, translationTagNameCol)
                 val itemTagValue = excelManager.getStringValue(translationSheet, itemRow, lngCol)
+
+                if (itemTagValue.toUpperCase() == IGNORE) {
+                    // allows you to ignore an specific cell translation
+                    logln("Row ${itemRow + 1} -> Lng: $languageId - Tag: $itemTagName | $IGNORE")
+                    continue
+                }
+
+                log("Row ${itemRow + 1} ENABLE -> ")
 
                 val baseDirectory = File(basePath)
                 val subDirectory = File(baseDirectory, itemRelativePath)
@@ -107,7 +115,7 @@ class LanguagesManager(excelFile: File) : Closeable {
 
                 otherXml.setOrCreateValueTag(itemTagName, replaceSymbols(itemTagValue))
                 otherXml.close()
-                logln("value replaced successfully")
+                logln("Tag: $itemTagName | DONE")
             }
 
         }
