@@ -45,7 +45,7 @@ class LanguageTranslator(excelFile: File) : Closeable {
     fun translate() {
 
         val langCount = getLanguageCounts() - 1
-        val itemsCount = getItemsToTranslateCount()
+        val itemsCount = getItemsToTranslateCount() + 2 // for some reason the lib don't return the num of rows properly.
 
         for (lngCol in translationFirstLanguageCol..(translationFirstLanguageCol + langCount)) {
 
@@ -84,11 +84,15 @@ class LanguageTranslator(excelFile: File) : Closeable {
                 val enResDirectory = File(subDirectory, resourceFolderName)
                 val englishFile = File(enResDirectory, itemFileName)
 
+                //val enRgbResDirectory = File(subDirectory, "values-en-rGB")
+                //val englishRgbFile = File(enRgbResDirectory, itemFileName)
+
                 val otherLngDirectory = File(subDirectory, "$resourceFolderName-$languageId")
                 val otherLanguageFile = File(otherLngDirectory, itemFileName)
                 var isNewEmptyFile = false
 
                 if (!otherLanguageFile.exists()) {
+                    //if (!englishRgbFile.exists() && !englishFile.exists() && !allowNewFileFromScratch) {
                     if (!englishFile.exists() && !allowNewFileFromScratch) {
                         throw UnexpectedException("English file doesn't exists, I'm unable to create a copy.")
                     }
@@ -98,6 +102,10 @@ class LanguageTranslator(excelFile: File) : Closeable {
                     }
 
                     log("file didn't exists -> ")
+                    /*if (englishRgbFile.exists()) {
+                        Files.copy(englishRgbFile.toPath(), otherLanguageFile.toPath())
+                        log("copied from values-en-rGB -> ")
+                    } else*/
                     if (englishFile.exists()) {
                         // copy eng file
                         Files.copy(englishFile.toPath(), otherLanguageFile.toPath())

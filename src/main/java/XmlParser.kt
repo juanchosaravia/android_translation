@@ -75,7 +75,11 @@ class XmlParser : Closeable {
 
         val outputXmlStringWriter = StringWriter()
         transformer.transform(DOMSource(doc), StreamResult(outputXmlStringWriter));
-        val outputXmlString = outputXmlStringWriter.toString().replaceFirst("?><", "?>\n<")
+        var outputXmlString = outputXmlStringWriter.toString().replaceFirst("?><", "?>\n<")
+        if (outputXmlString.endsWith("\n")) {
+            // remove last line
+            outputXmlString = outputXmlString.substring(0, outputXmlString.length - "\n".count())
+        }
 
         val outputXml = FileOutputStream(file)
         outputXml.write(outputXmlString.toByteArray(charset("UTF-8")))
